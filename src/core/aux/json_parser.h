@@ -8,6 +8,8 @@ namespace json = boost::json;
 
 namespace utf
 {
+namespace core
+{
 namespace aux
 {
 
@@ -48,5 +50,6 @@ std::optional<json::value> parse_json(const std::string& fn)
     return config;
 }
 
+}
 }
 }
