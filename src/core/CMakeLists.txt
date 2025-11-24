@@ -4,7 +4,6 @@ project(core VERSION 1.0)
 
 find_package(Boost 1.83 REQUIRED COMPONENTS json)
 
-
 set(
     HEADERS
     ./
@@ -12,12 +11,6 @@ set(
     ./endpoints
     ./scheduling
 )
-
-# set(
-#     SOURCES
-#     ./main.cpp
-#     ./impl/tcp_client.cpp
-# )
 
 add_library(${PROJECT_NAME} INTERFACE)
 
