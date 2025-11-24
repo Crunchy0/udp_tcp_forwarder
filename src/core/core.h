@@ -1,6 +1,7 @@
 #pragma once
 
 #include <concepts>
+#include <iostream>
 
 namespace utf
 {
@@ -10,4 +11,10 @@ namespace utf
         *bptr;
         ++bptr, bptr++;
     } && sizeof(*std::declval<T>()) == 1;
+
+    template<typename T>
+    concept printable = requires(T pr)
+    {
+        std::declval<std::ostream>() << pr;
+    };
 }
