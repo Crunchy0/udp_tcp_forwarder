@@ -1,0 +1,12 @@
+{
+    "udp_ports" : [
+        2077
+    ],
+    "tcp_clients" : [
+        {"ipv4" : "127.0.0.1", "port" : 5660},
+        {"ipv4" : "127.0.0.1", "port" : 5665}
+    ],
+    "connection_timeout_ms" : 2000,
+    "response_timeout_ms" : 20000,
+    "edr_log" : "log.edr"
+}
