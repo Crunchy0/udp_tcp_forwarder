@@ -4,8 +4,6 @@
 
 namespace utf
 {
-namespace core
-{
 namespace aux
 {
 
@@ -33,6 +31,5 @@ operator<<(LgrT& l, const FmtT& data)
     return l;
 }
 
-}
 }
 }

@@ -10,8 +10,6 @@
 
 namespace utf
 {
-namespace core
-{
 namespace endpoints
 {
 
@@ -50,8 +48,9 @@ public:
 
     template<byte_ptr BP>
     void send(const BP begin, const BP end);
+    
+    void stop();
 };
 
-}
 }
 }
