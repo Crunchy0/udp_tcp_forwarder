@@ -22,7 +22,6 @@ udp_server::~net_endpoint()
 
 void udp_server::stop()
 {
-    m_is_stopped.store(true);
     m_sock.close();
 }
 
@@ -48,15 +47,13 @@ void udp_server::recv_token(
     size_t bytes_count
 )
 {
-    if(m_is_stopped.load())
-        return;
-
-    if(!ec)
+    if(ec)
     {
-        std::string rs(m_recv_buf.data(), bytes_count);
-        std::cout << "Received some UDP bytes from " << m_remote_ep << ":\n";
-        std::cout << rs;
+        std::cerr << "UDP receive error: " << ec.message() << "\n";
+        return;
     }
+
+    std::string rs(m_recv_buf.data(), bytes_count);
     m_sock.async_receive_from(
         buffer(m_recv_buf), m_remote_ep,
         boost::bind(&udp_server::recv_token, this, placeholders::error, placeholders::bytes_transferred)
