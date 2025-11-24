@@ -14,7 +14,6 @@
 #include <iostream>
 
 using namespace boost::placeholders;
-using namespace utf::endpoints;
 
 namespace utf
 {
