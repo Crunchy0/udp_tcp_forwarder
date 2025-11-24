@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core.h"
+#include "utf_core.h"
 #include "endpoint.h"
 
 #include <boost/asio.hpp>

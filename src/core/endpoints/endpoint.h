@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core.h"
+#include "utf_core.h"
 
 #include <boost/asio/ip/address.hpp>
 #include <boost/asio/io_context.hpp>
