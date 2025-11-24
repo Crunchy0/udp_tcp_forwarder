@@ -15,6 +15,7 @@ set(
     SOURCES
     ./aux/source/edr_logger.cpp
     ./endpoints/source/tcp_client.cpp
+    ./endpoints/source/udp_server.cpp
 )
 
 add_library(${PROJECT_NAME} ${SOURCES})
