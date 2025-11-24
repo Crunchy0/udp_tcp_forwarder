@@ -20,4 +20,4 @@ set(
 add_library(${PROJECT_NAME} ${SOURCES})
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${HEADERS} PRIVATE ${Boost_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} PUBLIC core)
+target_link_libraries(${PROJECT_NAME} PUBLIC core spdlog)
