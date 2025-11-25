@@ -1,6 +1,7 @@
 #include "tcp_client.h"
 
 #include <iostream>
+#include <tuple>
 
 namespace utf
 {
@@ -100,6 +101,8 @@ void tcp_client::resp_timeo_token(
     }
 
     std::cout << "Request #" << request_id << " is expired\n";
+    giveaway_response(STATUS_OK, request_id, std::vector<char>());
+
     m_req_mem.erase(it);
 }
 
@@ -141,7 +144,14 @@ void tcp_client::recv_token(
     else
     {
         const req_id_t* req_id = reinterpret_cast<const req_id_t*>(m_recv_buf.data());
+
+        auto [payload_begin, payload_end] = std::make_tuple(
+            (m_recv_buf.begin() + sizeof(req_id_t)),
+            (m_recv_buf.begin() + bytes_count)
+        );
+
         std::cout << "Received a response on request with ID " << std::hex << *req_id << "\n";
+        giveaway_response(STATUS_OK, *req_id, std::vector<char>(payload_begin, payload_end));
 
         std::lock_guard l(m_req_mux);
         auto it = m_req_mem.find(*req_id);
@@ -155,6 +165,33 @@ void tcp_client::recv_token(
     m_sock.async_receive(
         boost::asio::buffer(m_recv_buf, m_recv_buf.size()),
         boost::bind(&tcp_client::recv_token, this, _1, _2)
+    );
+}
+
+void tcp_client::giveaway_response(uint32_t status, req_id_t req_id, std::vector<char>&& payload)
+{
+    const auto* status_bytes = reinterpret_cast<const char*>(&status);
+    payload.insert(payload.begin(), status_bytes, status_bytes + sizeof(status));
+
+    uint64_t curr_time_ms;
+    switch(status)
+    {
+        case STATUS_TIMEOUT:
+            curr_time_ms = ~0ul;
+            break;
+        default:
+            using namespace std::chrono;
+            curr_time_ms =
+                duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+            break;
+    }
+
+    resp_giveaway_evt.invoke(
+        scheduling::server_response(
+            req_id,
+            curr_time_ms,
+            payload.begin(), payload.end()
+        )
     );
 }
 

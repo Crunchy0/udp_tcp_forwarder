@@ -1,6 +1,8 @@
 #pragma once
 
 #include "utf_core.h"
+#include "event.h"
+#include "server_response.h"
 #include "endpoint.h"
 
 #include <boost/asio.hpp>
@@ -8,6 +10,7 @@
 #include <boost/atomic.hpp>
 #include <boost/bind/bind.hpp>
 
+#include <chrono>
 #include <unordered_map>
 #include <mutex>
 
@@ -33,7 +36,12 @@ public:
     int send(uint64_t req_id, const BP begin, const BP end);
 
     void stop();
-    bool is_connected() const {return m_is_conn.load();}
+    bool is_connected() const {return m_is_conn.load() && m_sock.is_open();}
+
+    boost::asio::ip::address_v4 get_address() const {return m_targ.address().to_v4();}
+    uint16_t get_port() const {return m_targ.port();}
+
+    scheduling::event<const scheduling::server_response&> resp_giveaway_evt;
 
 private:
     void conn_timeo_token(const boost::system::error_code& ec);
@@ -53,6 +61,8 @@ private:
         size_t bytes_count
     );
 
+    void giveaway_response(uint32_t status, req_id_t req_id, std::vector<char>&& payload);
+
     boost::asio::deadline_timer m_timeo;
     boost::asio::ip::tcp::socket m_sock;
     boost::asio::ip::tcp::endpoint m_targ;
@@ -64,6 +74,9 @@ private:
 
     std::mutex m_req_mux;
     std::unordered_map<req_id_t, boost::asio::deadline_timer> m_req_mem;
+
+    static constexpr int32_t STATUS_OK = 0;
+    static constexpr int32_t STATUS_TIMEOUT = 1;
 };
 
 using tcp_client = net_endpoint<proto_t::tcp, endpoint_t::client>;

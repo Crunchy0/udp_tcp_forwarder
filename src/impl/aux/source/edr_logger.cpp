@@ -26,9 +26,17 @@ void edr_logger::write(const edr& edr_rep)
     m_dest <<
             edr_rep.arrival_time_ms << " " <<
             edr_rep.client_addr << ":" << edr_rep.client_port << " " <<
-            edr_rep.server_addr << ":" << edr_rep.server_port << " " <<
-            edr_rep.tcp_resp_dur_ms <<
-            std::endl;
+            edr_rep.server_addr << ":" << edr_rep.server_port << " ";
+        
+    if(edr_rep.tcp_resp_dur_ms == edr::TIMEOUT)
+    {
+        m_dest << "timed_out";
+    }
+    else
+    {
+        m_dest << edr_rep.tcp_resp_dur_ms;
+    }
+    m_dest << std::endl;
 }
 
 }
