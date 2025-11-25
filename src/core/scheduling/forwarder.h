@@ -13,7 +13,7 @@ public:
     virtual ~forwarder() = default;
 
     virtual void schedule(const client_request& req) = 0;
-    virtual void schedule(const client_request&& req) = 0;
+    virtual void schedule(client_request&& req) = 0;
 };
 
 }
