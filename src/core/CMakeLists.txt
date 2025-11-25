@@ -12,7 +12,13 @@ set(
     ./scheduling
 )
 
-add_library(${PROJECT_NAME} INTERFACE)
+set(
+    SOURCES
+    ./aux/json_parser.cpp
+)
 
-target_include_directories(${PROJECT_NAME} INTERFACE ${HEADERS} ${Boost_INCLUDE_DIRS})
+add_library(${PROJECT_NAME} ${SOURCES})
+
+target_include_directories(${PROJECT_NAME} PUBLIC ${HEADERS} ${Boost_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PUBLIC Boost::json)
 
