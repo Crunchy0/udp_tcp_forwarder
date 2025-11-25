@@ -9,6 +9,7 @@ set(
     ./
     ./aux/include
     ./endpoints/include
+    ./scheduling/include
 )
 
 set(
@@ -16,6 +17,7 @@ set(
     ./aux/source/edr_logger.cpp
     ./endpoints/source/tcp_client.cpp
     ./endpoints/source/udp_server.cpp
+    ./scheduling/source/rr_forwarder.cpp
 )
 
 add_library(${PROJECT_NAME} ${SOURCES})
