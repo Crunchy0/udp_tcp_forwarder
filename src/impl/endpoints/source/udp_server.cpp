@@ -1,12 +1,14 @@
 #include "udp_server.h"
 
+#include <chrono>
+
 namespace utf
 {
 namespace endpoints
 {
 
-udp_server::net_endpoint(boost::asio::io_context& ioc, uint16_t port) :
-    m_sock(ioc, ip::udp::endpoint(ip::udp::v4(), port))
+udp_server::net_endpoint(boost::asio::io_context& ioc, uint16_t port, uint32_t id) :
+    m_sock(ioc, ip::udp::endpoint(ip::udp::v4(), port)), m_id(id)
 {
     m_recv_buf.resize(4096);
     m_sock.async_receive_from(
@@ -53,7 +55,18 @@ void udp_server::recv_token(
         return;
     }
 
-    std::string rs(m_recv_buf.data(), bytes_count);
+    using namespace std::chrono;
+    uint64_t curr_time_ms =
+        duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+
+    incoming_req_evt.invoke(
+        utf::scheduling::client_request(
+            m_id, curr_time_ms,
+            m_remote_ep.address().to_v4(), m_remote_ep.port(),
+            m_recv_buf.begin(), m_recv_buf.begin() + bytes_count
+        )
+    );
+    
     m_sock.async_receive_from(
         buffer(m_recv_buf), m_remote_ep,
         boost::bind(&udp_server::recv_token, this, placeholders::error, placeholders::bytes_transferred)

@@ -26,6 +26,8 @@ struct edr
     
     uint16_t client_port;
     uint16_t server_port;
+
+    static constexpr uint64_t TIMEOUT = ~0ul;
 };
 
 class edr_logger : public utf::aux::formatted_logger<edr>

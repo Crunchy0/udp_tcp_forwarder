@@ -1,7 +1,9 @@
 #pragma once
 
+#include "event.h"
 #include "utf_core.h"
 #include "endpoint.h"
+#include "client_request.h"
 
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
@@ -24,7 +26,7 @@ template<>
 class net_endpoint<proto_t::udp, endpoint_t::server>
 {
 public:
-    net_endpoint(boost::asio::io_context& ios, uint16_t port);
+    net_endpoint(boost::asio::io_context& ios, uint16_t port, uint32_t id);
     ~net_endpoint();
 
     template<utf::byte_ptr BP>
@@ -32,6 +34,7 @@ public:
 
     void stop();
 
+    utf::scheduling::event<const utf::scheduling::client_request&> incoming_req_evt;
 private:
     void send_token(
         const boost::system::error_code& ec,
@@ -49,6 +52,8 @@ private:
     boost::asio::ip::udp::endpoint m_remote_ep;
 
     boost::atomic_bool m_is_stopped = false;
+
+    uint32_t m_id;
 };
 
 using udp_server = net_endpoint<proto_t::udp, endpoint_t::server>;
