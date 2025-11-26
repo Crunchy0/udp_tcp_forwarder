@@ -1,10 +1,9 @@
 #pragma once
 
-// #include <some_logging_lib>
-
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <type_traits>
 #include <vector>
 #include <unordered_map>
@@ -30,6 +29,8 @@ public:
     {
         std::vector<size_t> junktown;
 
+        {
+        std::shared_lock l(m_cb_access_mx);
         for(auto& cb : m_cb)
         {
             // This is for automatically erasing expired owners
@@ -37,16 +38,23 @@ public:
 
             cb.second(erase_request, args...);
         }
+        }
 
+        {
+        std::shared_lock l(m_cb_access_mx);
         for(auto& cb : m_hashless_cb)
         {
             cb.second(args...);
         }
+        }
 
+        {
+        std::shared_lock l(m_cb_access_mx);
         for(const size_t& hash : junktown)
         {
             // some logging info on erasing callback
             m_cb.erase(hash);
+        }
         }
     }
 
@@ -73,6 +81,7 @@ public:
             (shared.get()->*hdlr)(args...);
         };
 
+        std::unique_lock l(m_cb_access_mx);
         auto emp = m_cb.emplace(hash, wrapper);
         // some logging info on emplacement
     }
@@ -85,6 +94,7 @@ public:
 
         size_t hash = h1(optr.get()) ^ h2(*reinterpret_cast<unsigned long*>(&hdlr));
 
+        std::unique_lock l(m_cb_access_mx);
         auto it = m_cb.find(hash);
         if(it != m_cb.end())
         {
@@ -108,6 +118,7 @@ public:
             (optr->*hdlr)(args...);
         };
 
+        std::unique_lock l(m_cb_access_mx);
         auto emp = m_cb.emplace(hash, wrapper);
         // some logging info on emplacement
     }
@@ -120,6 +131,7 @@ public:
 
         size_t hash = h1(optr) ^ h2(*reinterpret_cast<unsigned long*>(&hdlr));
 
+        std::unique_lock l(m_cb_access_mx);
         auto it = m_cb.find(hash);
         if(it != m_cb.end())
         {
@@ -140,6 +152,7 @@ public:
             hdlr(args...);
         };
 
+        std::unique_lock l(m_cb_access_mx);
         auto emp = m_cb.emplace(hash, wrapper);
         // some logging info on emplacement
     }
@@ -149,6 +162,7 @@ public:
         auto h = std::hash<unsigned long>{};
         size_t hash = h(*reinterpret_cast<unsigned long*>(&hdlr));
 
+        std::unique_lock l(m_cb_access_mx);
         auto it = m_cb.find(hash);
         if(it != m_cb.end())
         {
@@ -161,12 +175,14 @@ public:
 
     void subscribe(size_t id, handler_func hdlr)
     {
+        std::unique_lock l(m_cb_access_mx);
         auto emp = m_hashless_cb.emplace(id, hdlr);
         // some logging info on emplacement
     }
 
     void unsubscribe(size_t id)
     {
+        std::unique_lock l(m_cb_access_mx);
         auto it = m_hashless_cb.find(id);
         if(it != m_hashless_cb.end())
         {
@@ -181,6 +197,8 @@ private:
 
     // Functions that cannot be hashed (lambdas, etc.) are stored with a user-given id
     std::unordered_map<size_t, handler_func> m_hashless_cb;
+
+    std::shared_mutex m_cb_access_mx;
 };
 
 }
