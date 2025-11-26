@@ -1,5 +1,7 @@
 #include "rr_forwarder.h"
 
+#include "spdlog/spdlog.h"
+
 #include <chrono>
 #include <exception>
 #include <random>
@@ -46,7 +48,6 @@ rr_forwarder::~rr_forwarder()
 
     for(const auto& pr : m_pending_reqs)
     {
-        // Build edr log
         aux::edr edr
         {
             .arrival_time_ms = pr.second.arrival_time_ms,
@@ -81,6 +82,9 @@ void rr_forwarder::accept_response(const server_response& response)
 
 decltype(rr_forwarder::m_clients)::iterator rr_forwarder::get_next_client()
 {
+    if(m_curr_client == m_clients.end())
+        m_curr_client = m_clients.begin();
+
     auto it = m_curr_client + 1;
     for(;it != m_curr_client;)
     {
@@ -112,16 +116,12 @@ void rr_forwarder::forward_requests()
     std::lock_guard l1(m_req_mx);
     while(!m_requests.empty())
     {
-        if(m_curr_client == m_clients.end())
-            m_curr_client = m_clients.begin();
-
         auto& req = m_requests.front();
 
         auto it = get_next_client();
         if(it == m_clients.end())
             return;
         
-
         uint64_t rid;
         {
             std::lock_guard l2(m_pend_mx);
@@ -145,7 +145,14 @@ void rr_forwarder::forward_requests()
                 .fwd_time_us = current_time_us
             };
             m_pending_reqs.emplace(rid, pr);
+
+            spdlog::trace("Scheduled request #{0:x}: {1}:{2} -> {3}:{4}",
+                rid,
+                pr.client_addr.to_string(), pr.client_port,
+                pr.server_addr.to_string(), pr.server_port
+            );
         }
+
         it->get()->send(rid, req.payload.begin(), req.payload.end());
         m_requests.pop_front();
     }
@@ -163,6 +170,8 @@ void rr_forwarder::send_responses()
             std::lock_guard l(m_pend_mx);
             if(!m_pending_reqs.contains(resp.request_id))
             {
+                spdlog::warn("Unknown request #{0:x}", resp.request_id);
+
                 m_responses.pop_front();
                 continue;
             }
@@ -185,9 +194,21 @@ void rr_forwarder::send_responses()
             .client_port = pr.client_port,
             .server_port = pr.server_port
         };
-        
-        send_back_evt.invoke(pr.listener_id, pr.client_addr, pr.client_port, resp.payload);
         edr_report_evt.invoke(edr);
+
+        if(resp.resp_timestamp_us != TIMESTAMP_TIMEOUT)
+        {
+            spdlog::trace("Sending request #{0:x} back from {1}:{2} to {3}:{4}",
+                pr.request_id,
+                pr.server_addr.to_string(), pr.server_port,
+                pr.client_addr.to_string(), pr.client_port
+            );
+            send_back_evt.invoke(pr.listener_id, pr.client_addr, pr.client_port, resp.payload);
+        }
+        else
+        {
+            spdlog::warn("Request #{0:x} has expired", pr.request_id);
+        }
         m_responses.pop_front();
     }
 }
@@ -205,6 +226,7 @@ void rr_forwarder::main_loop()
         std::this_thread::yield();
     }
 
+    spdlog::debug("Cleaning up TCP clients' response handlers");
     for(const auto& cl : m_clients)
     {
         cl->resp_giveaway_evt.unsubscribe(this, &rr_forwarder::accept_response);

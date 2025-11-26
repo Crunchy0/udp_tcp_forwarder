@@ -1,6 +1,9 @@
 #include "tcp_client.h"
 
+#include "spdlog/spdlog.h"
+
 #include <iostream>
+#include <string>
 #include <tuple>
 
 namespace utf
@@ -38,12 +41,16 @@ void tcp_client::conn_token(const boost::system::error_code& ec)
 
     if(ec)
     {
-        std::cerr << "Async connect error(" << m_targ << ") : " << ec.message() << "\n";
+        spdlog::error("({0}:{1}) Async connect error: {2}",
+             m_targ.address().to_string(), m_targ.port(), ec.message()
+        );
         m_sock.close();
     }
     else
     {
-        std::cout << "Connection to " << m_targ << " is successful\n";
+        spdlog::info("({0}:{1}) Connection is successful",
+            m_targ.address().to_string(), m_targ.port()
+        );
         m_timeo.expires_at(boost::posix_time::pos_infin);
         m_timeo.async_wait([](const boost::system::error_code& ec){});
         m_is_conn.store(true);
@@ -67,11 +74,13 @@ void tcp_client::conn_timeo_token(const boost::system::error_code& ec)
         m_sock.close();
         m_timeo.expires_from_now(boost::posix_time::seconds(1));
         m_sock.async_connect(m_targ, boost::bind(&tcp_client::conn_token, this, _1));
-        std::cerr << "Connection to " << m_targ << " timed out, reconnecting...\n";
+
+        spdlog::warn("({0}:{1}) Connection timed out, reconnecting",
+            m_targ.address().to_string(), m_targ.port()
+        );
     }
     else if(ec)
     {
-        std::cerr << "Error in connection timeout token: " << ec.message() << "\n";
         return;
     }
     m_timeo.async_wait(boost::bind(&tcp_client::conn_timeo_token, this, _1));
@@ -87,8 +96,9 @@ void tcp_client::resp_timeo_token(
 
     if(ec)
     {
-        std::cerr << "Cancelled waiting for a timeout (request #" << request_id << "): "
-            << ec.message() << "\n";
+        spdlog::debug("Cancelled waiting for a timeout (request #{0:x}): {1}",
+            request_id, ec.message()
+        );
         return;
     }
 
@@ -96,18 +106,17 @@ void tcp_client::resp_timeo_token(
     auto it = m_req_mem.find(request_id);
     if(it == m_req_mem.end())
     {
-        std::cerr << "Request #" << request_id << " no longer exists\n";
+        spdlog::debug("Request #{0:x} does not exists", request_id);
         return;
     }
 
     if(it->second.expires_at() > boost::asio::deadline_timer::traits_type::now())
     {
-        std::cout << "Still waiting for a response (request #" << request_id << ")";
+        spdlog::debug("Still waiting for a response (request #{0:x})", request_id);
         it->second.async_wait(boost::bind(&tcp_client::resp_timeo_token, this, _1, request_id));
         return;
     }
 
-    std::cout << "Request #" << request_id << " is expired\n";
     giveaway_response(STATUS_TIMEOUT, request_id, std::vector<char>());
 
     m_req_mem.erase(it);
@@ -124,11 +133,15 @@ void tcp_client::send_token(
 
     if(ec)
     {
-        std::cerr << "Error while sending to " << m_targ << "\n";
+        spdlog::error("({0}:{1}) Send failed",
+            m_targ.address().to_string(), m_targ.port()
+        );
     }
     else
     {
-        std::cout << "Sent " << bytes_count << " bytes to " << m_targ << " successfully\n";
+        spdlog::debug("({0}:{1}) Sent {2} bytes",
+            m_targ.address().to_string(), m_targ.port(), bytes_count
+        );
     }
 }
 
@@ -142,11 +155,15 @@ void tcp_client::recv_token(
 
     if(ec)
     {
-        std::cerr << "Error while receiving from " << m_targ << " : " << ec.message() << "\n";
+        spdlog::error("({0}:{1}) Receive error: {2}",
+            m_targ.address().to_string(), m_targ.port(), ec.message()
+        );
     }
     else if(bytes_count < sizeof(req_id_t))
     {
-        std::cerr << "Response from " << m_targ << "is too small\n";
+        spdlog::error("({0}:{1}) Received response is shorter than size of request ID ({2})",
+            m_targ.address().to_string(), m_targ.port(), sizeof(req_id_t)
+        );
     }
     else
     {
@@ -157,14 +174,17 @@ void tcp_client::recv_token(
             (m_recv_buf.begin() + bytes_count)
         );
 
-        std::cout << "Received a response on request with ID " << std::hex << *req_id << "\n";
+        spdlog::trace("({0}:{1}) Received a response on request#{2:x}",
+            m_targ.address().to_string(), m_targ.port(), *req_id
+        );
+
         giveaway_response(STATUS_OK, *req_id, std::vector<char>(payload_begin, payload_end));
 
         std::lock_guard l(m_req_mux);
         auto it = m_req_mem.find(*req_id);
         if(it != m_req_mem.end())
         {
-            std::cout << "Deleting request with ID " << std::hex << *req_id << "\n";
+            spdlog::debug("Deleting request #{0:x}", *req_id);
             m_req_mem.erase(it);
         }
     }

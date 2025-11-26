@@ -1,5 +1,7 @@
 #include "udp_server.h"
 
+#include "spdlog/spdlog.h"
+
 #include <chrono>
 
 namespace utf
@@ -36,11 +38,18 @@ void udp_server::send_token(
 {
     if(ec)
     {
-        std::cerr << "Failed sending message to " << receiver << "\n";
+        spdlog::error("({0}:{1}) Send to {2}:{3} failed",
+            m_sock.local_endpoint().address().to_string(), m_sock.local_endpoint().port(),
+            receiver.address().to_string(), receiver.port()
+        );
     }
     else
     {
-        std::cout << "Send message (" << bytes_count << " bytes) to " << receiver << "\n";
+        spdlog::debug("({0}:{1}) Send {2} bytes to {3}:{4}",
+            m_sock.local_endpoint().address().to_string(), m_sock.local_endpoint().port(),
+            bytes_count,
+            receiver.address().to_string(), receiver.port()
+        );
     }
 }
 
@@ -51,9 +60,17 @@ void udp_server::recv_token(
 {
     if(ec)
     {
-        std::cerr << "UDP receive error: " << ec.message() << "\n";
+        spdlog::error("({0}:{1}) Receive error: {2}",
+            m_sock.local_endpoint().address().to_string(), m_sock.local_endpoint().port(),
+            ec.message()
+        );
         return;
     }
+
+    spdlog::trace("({0}:{1}) Received message from {2}:{3}",
+        m_sock.local_endpoint().address().to_string(), m_sock.local_endpoint().port(),
+        m_remote_ep.address().to_string(), m_remote_ep.port()
+    );
 
     using namespace std::chrono;
     uint64_t curr_time_us =

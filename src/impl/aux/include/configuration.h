@@ -10,6 +10,8 @@
 
 #include <boost/asio/ip/address_v4.hpp>
 
+#include <spdlog/spdlog.h>
+
 namespace utf
 {
 namespace aux
@@ -30,10 +32,12 @@ struct config
     uint32_t connection_timeout_ms = 5000;
 
     std::string log_file_path;
+    spdlog::level::level_enum logging_lvl;
 };
 
 std::ostream& operator<<(std::ostream& os, const config& cfg)
 {
+    os << "Configuration:\n";
     os << "UDP ports:\n";
     for(const auto& elem : cfg.udp_ports)
     {
@@ -67,6 +71,7 @@ config read_config(const boost::json::value& json_cfg)
     auto log_p = json_obj.find("edr_log");
     auto rsp_t = json_obj.find("response_timeout_ms");
     auto cnn_t = json_obj.find("connection_timeout_ms");
+    auto log_l = json_obj.find("logging_level");
 
     if(udp_p != json_obj.end() && udp_p->value().is_array())
     {
@@ -132,13 +137,28 @@ config read_config(const boost::json::value& json_cfg)
             cfg.connection_timeout_ms = cnn_t_val > cnn_t_lim::max() ? cnn_t_lim::max() : cnn_t_val;
     }
 
+    if(log_l != json_obj.end() && log_l->value().is_int64())
+    {
+        const auto& log_l_val = log_l->value().as_int64();
+        if(log_l_val < 0 || log_l_val > spdlog::level::level_enum::n_levels)
+            cfg.logging_lvl = spdlog::level::level_enum::off;
+        else
+            cfg.logging_lvl = static_cast<spdlog::level::level_enum>(log_l_val);
+    }
+
     return cfg;
 }
 
 bool validate_config(const config& cfg)
 {
-    if(cfg.udp_ports.empty() || cfg.tcp_clients.empty())
+    if(cfg.udp_ports.empty())
     {
+        spdlog::error("UDP ports list is empty");
+        return false;
+    }
+    if(cfg.tcp_clients.empty())
+    {
+        spdlog::error("TCP clients list is empty");
         return false;
     }
     return true;

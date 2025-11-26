@@ -6,6 +6,8 @@
 #include <boost/thread.hpp>
 #include <boost/program_options.hpp>
 
+#include <spdlog/spdlog.h>
+
 #include <csignal>
 #include <iostream>
 #include <functional>
@@ -28,13 +30,13 @@ std::function<void()> destroyer;
 
 void sig_handler(int sig)
 {
-    // log
+    spdlog::warn("Received signal {0}", strsignal(sig));
     destroyer();
 }
 
 int main(int argc, char** argv)
 {
-    po::options_description desc("Options");
+    po::options_description desc("Allowed options");
     desc.add_options()
         ("config", po::value<std::string>()->default_value("./cfg.json"), "Path to configuration file");
     
@@ -44,7 +46,8 @@ int main(int argc, char** argv)
     auto json_val = utf::aux::parse_json(vm.at("config").as<std::string>());
     if(!json_val)
     {
-        std::cout << "Cannot read config " << vm.at("config").as<std::string>() << "\n";
+        spdlog::critical("Can't read configuration from {0}", vm.at("config").as<std::string>());
+        std::cout << desc;
         return -1;
     }
     auto config = utf::aux::read_config(*json_val);
@@ -52,9 +55,11 @@ int main(int argc, char** argv)
     std::cout << config;
     if(!utf::aux::validate_config(config))
     {
-        //log
+        spdlog::critical("Confiiguration is invalid");
         return -1;
     }
+
+    spdlog::set_level(config.logging_lvl);
 
     io_context ioc_tcp;
     io_context ioc_udp;
@@ -115,6 +120,8 @@ int main(int argc, char** argv)
     destroyer =
     [&]()
     {
+        spdlog::info("Finalizing execution");
+
         ioc_udp.stop();
         ioc_tcp.stop();
         fwdr.reset();
@@ -133,5 +140,6 @@ int main(int argc, char** argv)
     ioc_udp.run();
     tg.join_all();
 
+    spdlog::info("Exiting");
     return 0;
 }
