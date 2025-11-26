@@ -33,7 +33,6 @@ public:
         std::shared_lock l(m_cb_access_mx);
         for(auto& cb : m_cb)
         {
-            // This is for automatically erasing expired owners
             auto erase_request = [&cb, &junktown] () {junktown.push_back(cb.first);};
 
             cb.second(erase_request, args...);
@@ -52,7 +51,6 @@ public:
         std::shared_lock l(m_cb_access_mx);
         for(const size_t& hash : junktown)
         {
-            // some logging info on erasing callback
             m_cb.erase(hash);
         }
         }
@@ -83,7 +81,6 @@ public:
 
         std::unique_lock l(m_cb_access_mx);
         auto emp = m_cb.emplace(hash, wrapper);
-        // some logging info on emplacement
     }
 
     template<class Owner>
@@ -98,7 +95,6 @@ public:
         auto it = m_cb.find(hash);
         if(it != m_cb.end())
         {
-            // some logging info on erasing callback
             m_cb.erase(it);
         }
     }
@@ -114,13 +110,11 @@ public:
         auto wrapper =
         [optr, hdlr]([[maybe_unused]] std::function<void()> del_req, Args... args)
         {
-            // (optr->*hdlr)(std::forward<Args...>(args...));
             (optr->*hdlr)(args...);
         };
 
         std::unique_lock l(m_cb_access_mx);
         auto emp = m_cb.emplace(hash, wrapper);
-        // some logging info on emplacement
     }
 
     template<class Owner>
@@ -135,7 +129,6 @@ public:
         auto it = m_cb.find(hash);
         if(it != m_cb.end())
         {
-            // some logging info on erasing callback
             m_cb.erase(it);
         }
     }
@@ -148,13 +141,11 @@ public:
         auto wrapper =
         [hdlr]([[maybe_unused]] std::function<void()> del_req, Args&&... args)
         {
-            // hdlr(std::forward<Args...>(args...));
             hdlr(args...);
         };
 
         std::unique_lock l(m_cb_access_mx);
         auto emp = m_cb.emplace(hash, wrapper);
-        // some logging info on emplacement
     }
 
     void unsubscribe(handler_raw hdlr)
@@ -166,7 +157,6 @@ public:
         auto it = m_cb.find(hash);
         if(it != m_cb.end())
         {
-            // some logging info on erasing callback
             m_cb.erase(it);
         }
     }
@@ -177,7 +167,6 @@ public:
     {
         std::unique_lock l(m_cb_access_mx);
         auto emp = m_hashless_cb.emplace(id, hdlr);
-        // some logging info on emplacement
     }
 
     void unsubscribe(size_t id)
@@ -186,7 +175,6 @@ public:
         auto it = m_hashless_cb.find(id);
         if(it != m_hashless_cb.end())
         {
-            // some logging info on erasing callback
             m_hashless_cb.erase(it);
         }
     }
