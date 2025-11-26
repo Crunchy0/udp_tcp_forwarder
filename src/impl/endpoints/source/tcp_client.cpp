@@ -8,14 +8,21 @@ namespace utf
 namespace endpoints
 {
 
-tcp_client::net_endpoint(boost::asio::io_context& ioc, const boost::asio::ip::tcp::endpoint& targ) :
+tcp_client::net_endpoint(
+    boost::asio::io_context& ioc,
+    const boost::asio::ip::tcp::endpoint& targ,
+    uint64_t conn_timeo_ms,
+    uint64_t resp_timeo_ms
+) :
     m_sock(ioc),
     m_timeo(ioc),
-    m_targ(targ)
+    m_targ(targ),
+    m_conn_timeo_ms(conn_timeo_ms),
+    m_resp_timeo_ms(resp_timeo_ms)
 {
     m_sock.async_connect(m_targ, boost::bind(&tcp_client::conn_token, this, _1));
 
-    m_timeo.expires_from_now(boost::posix_time::seconds(1));
+    m_timeo.expires_from_now(boost::posix_time::milliseconds(m_conn_timeo_ms));
     m_timeo.async_wait(boost::bind(&tcp_client::conn_timeo_token, this, _1));
 }
 

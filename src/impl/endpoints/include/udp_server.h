@@ -26,7 +26,7 @@ template<>
 class net_endpoint<proto_t::udp, endpoint_t::server>
 {
 public:
-    net_endpoint(boost::asio::io_context& ios, uint16_t port, uint32_t id);
+    net_endpoint(boost::asio::io_context& ioc, uint16_t port, uint32_t id);
     ~net_endpoint();
 
     template<utf::byte_ptr BP>
