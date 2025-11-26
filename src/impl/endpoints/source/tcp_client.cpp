@@ -75,7 +75,7 @@ void tcp_client::conn_timeo_token(const boost::system::error_code& ec)
         m_timeo.expires_from_now(boost::posix_time::seconds(1));
         m_sock.async_connect(m_targ, boost::bind(&tcp_client::conn_token, this, _1));
 
-        spdlog::info("({0}:{1}) Connection timed out, reconnecting",
+        spdlog::warn("({0}:{1}) Connection timed out, reconnecting",
             m_targ.address().to_string(), m_targ.port()
         );
     }
@@ -117,7 +117,6 @@ void tcp_client::resp_timeo_token(
         return;
     }
 
-    spdlog::warn("Request #{0:x} has expired", request_id);
     giveaway_response(STATUS_TIMEOUT, request_id, std::vector<char>());
 
     m_req_mem.erase(it);

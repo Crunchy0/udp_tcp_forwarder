@@ -36,6 +36,8 @@ void sig_handler(int sig)
 
 int main(int argc, char** argv)
 {
+    spdlog::set_level(spdlog::level::trace);
+
     po::options_description desc("Allowed options");
     desc.add_options()
         ("config", po::value<std::string>()->default_value("./cfg.json"), "Path to configuration file");
