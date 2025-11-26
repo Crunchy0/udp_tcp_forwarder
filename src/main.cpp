@@ -36,8 +36,6 @@ void sig_handler(int sig)
 
 int main(int argc, char** argv)
 {
-    spdlog::set_level(spdlog::level::trace);
-
     po::options_description desc("Allowed options");
     desc.add_options()
         ("config", po::value<std::string>()->default_value("./cfg.json"), "Path to configuration file");
@@ -60,6 +58,8 @@ int main(int argc, char** argv)
         spdlog::critical("Confiiguration is invalid");
         return -1;
     }
+
+    spdlog::set_level(config.logging_lvl);
 
     io_context ioc_tcp;
     io_context ioc_udp;

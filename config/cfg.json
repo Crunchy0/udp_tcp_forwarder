@@ -8,5 +8,6 @@
     ],
     "connection_timeout_ms" : 2000,
     "response_timeout_ms" : 20000,
-    "edr_log" : "log.edr"
+    "edr_log" : "log.edr",
+    "logging_level" : 2
 }
