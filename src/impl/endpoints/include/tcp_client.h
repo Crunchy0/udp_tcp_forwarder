@@ -32,8 +32,8 @@ public:
     net_endpoint(
         boost::asio::io_context& ioc,
         const boost::asio::ip::tcp::endpoint& targ,
-        uint64_t conn_timeo_ms = 5000,
-        uint64_t resp_timeo_ms = 2000
+        uint64_t conn_timeo_ms,
+        uint64_t resp_timeo_ms
     );
     ~net_endpoint();
 

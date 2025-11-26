@@ -44,7 +44,7 @@ public:
     void schedule(const client_request& req) override;
     void schedule(client_request&& req) override;
     
-    event<uint16_t, boost::asio::ip::address_v4, uint16_t, const std::vector<char>&> send_back_evt;
+    event<uint32_t, boost::asio::ip::address_v4, uint16_t, const std::vector<char>&> send_back_evt;
     event<const aux::edr&> edr_report_evt;
     
 private:
