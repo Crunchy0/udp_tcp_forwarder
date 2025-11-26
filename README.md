@@ -9,7 +9,9 @@ make
 ```
 
 Usage:
-``` ./udp_tcp_forwarder --config <path_to_json_config> ```
+```
+./udp_tcp_forwarder --config <path_to_json_config>
+```
 
 Can be safely stopped with SIGINT or SIGTERM.
 
