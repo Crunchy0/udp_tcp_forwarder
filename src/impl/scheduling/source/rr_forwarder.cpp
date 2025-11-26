@@ -99,6 +99,11 @@ decltype(rr_forwarder::m_clients)::iterator rr_forwarder::get_next_client()
         m_curr_client = it;
         return m_curr_client;
     }
+    
+    if(m_curr_client->get()->is_connected())
+    {
+        return m_curr_client;
+    }
     return m_clients.end();
 }
 
