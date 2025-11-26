@@ -29,7 +29,12 @@ class net_endpoint<proto_t::tcp, endpoint_t::client>
 public:
     using req_id_t = uint64_t;
 
-    net_endpoint(boost::asio::io_context& ios, const boost::asio::ip::tcp::endpoint& targ);
+    net_endpoint(
+        boost::asio::io_context& ioc,
+        const boost::asio::ip::tcp::endpoint& targ,
+        uint64_t conn_timeo_ms = 5000,
+        uint64_t resp_timeo_ms = 2000
+    );
     ~net_endpoint();
 
     template<utf::byte_ptr BP>
@@ -75,7 +80,10 @@ private:
     std::mutex m_req_mux;
     std::unordered_map<req_id_t, boost::asio::deadline_timer> m_req_mem;
 
-    static constexpr int32_t STATUS_OK = 0;
+    uint64_t m_conn_timeo_ms;
+    uint64_t m_resp_timeo_ms;
+
+    static constexpr int32_t STATUS_OK = 0xffffffff;
     static constexpr int32_t STATUS_TIMEOUT = 1;
 };
 
@@ -92,13 +100,16 @@ int tcp_client::send(uint64_t req_id, const BP begin, const BP end)
             return -1;
         
         auto emp = m_req_mem.emplace(req_id, boost::asio::deadline_timer(m_sock.get_executor()));
-        emp.first->second.expires_from_now(boost::posix_time::seconds(10));
+        emp.first->second.expires_from_now(boost::posix_time::milliseconds(m_resp_timeo_ms));
         emp.first->second.async_wait(boost::bind(&tcp_client::resp_timeo_token, this, _1, req_id));
     }
 
+    auto req_id_bytes = reinterpret_cast<const char*>(&req_id);
+
     auto send_buf = std::make_shared<std::vector<char>>();
-    send_buf->reserve(end - begin);
-    send_buf->insert(send_buf->begin(), begin, end);
+    send_buf->reserve(end - begin + sizeof(req_id));
+    send_buf->insert(send_buf->end(), req_id_bytes, req_id_bytes + sizeof(req_id));
+    send_buf->insert(send_buf->end(), begin, end);
     m_sock.async_send(
         boost::asio::buffer(*send_buf, send_buf->size()),
         boost::bind(&tcp_client::send_token, this, _1, _2, send_buf)
