@@ -10,6 +10,8 @@
 
 #include <boost/asio/ip/address_v4.hpp>
 
+#include <spdlog/spdlog.h>
+
 namespace utf
 {
 namespace aux
@@ -34,6 +36,7 @@ struct config
 
 std::ostream& operator<<(std::ostream& os, const config& cfg)
 {
+    os << "Configuration:\n";
     os << "UDP ports:\n";
     for(const auto& elem : cfg.udp_ports)
     {
@@ -137,8 +140,14 @@ config read_config(const boost::json::value& json_cfg)
 
 bool validate_config(const config& cfg)
 {
-    if(cfg.udp_ports.empty() || cfg.tcp_clients.empty())
+    if(cfg.udp_ports.empty())
     {
+        spdlog::error("UDP ports list is empty");
+        return false;
+    }
+    if(cfg.tcp_clients.empty())
+    {
+        spdlog::error("TCP clients list is empty");
         return false;
     }
     return true;
