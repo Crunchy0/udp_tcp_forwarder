@@ -108,7 +108,7 @@ void tcp_client::resp_timeo_token(
     }
 
     std::cout << "Request #" << request_id << " is expired\n";
-    giveaway_response(STATUS_OK, request_id, std::vector<char>());
+    giveaway_response(STATUS_TIMEOUT, request_id, std::vector<char>());
 
     m_req_mem.erase(it);
 }
@@ -180,23 +180,23 @@ void tcp_client::giveaway_response(uint32_t status, req_id_t req_id, std::vector
     const auto* status_bytes = reinterpret_cast<const char*>(&status);
     payload.insert(payload.begin(), status_bytes, status_bytes + sizeof(status));
 
-    uint64_t curr_time_ms;
+    uint64_t curr_time_us;
     switch(status)
     {
         case STATUS_TIMEOUT:
-            curr_time_ms = ~0ul;
+            curr_time_us = TIMESTAMP_TIMEOUT;
             break;
         default:
             using namespace std::chrono;
-            curr_time_ms =
-                duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+            curr_time_us =
+                duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
             break;
     }
 
     resp_giveaway_evt.invoke(
         scheduling::server_response(
             req_id,
-            curr_time_ms,
+            curr_time_us,
             payload.begin(), payload.end()
         )
     );

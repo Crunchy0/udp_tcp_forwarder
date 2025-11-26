@@ -17,9 +17,9 @@ struct server_response
     template<byte_ptr BP>
     server_response(
         uint64_t req_id,
-        uint64_t resp_ts_ms,
+        uint64_t resp_ts_us,
         const BP begin, const BP end) :
-        request_id(req_id), resp_timestamp_ms(resp_ts_ms)
+        request_id(req_id), resp_timestamp_us(resp_ts_us)
     {
         if(end - begin > 0)
         {
@@ -31,14 +31,14 @@ struct server_response
     server_response(const server_response& other)
     {
         request_id = other.request_id;
-        resp_timestamp_ms = other.resp_timestamp_ms;
+        resp_timestamp_us = other.resp_timestamp_us;
         payload = other.payload;
     }
 
     server_response(server_response&& other)
     {
         request_id = other.request_id;
-        resp_timestamp_ms = other.resp_timestamp_ms;
+        resp_timestamp_us = other.resp_timestamp_us;
         payload = std::move(other.payload);
     }
 
@@ -46,7 +46,7 @@ struct server_response
     server_response& operator=(server_response&& other) = delete;
 
     uint64_t request_id;
-    uint64_t resp_timestamp_ms;
+    uint64_t resp_timestamp_us;
     std::vector<char> payload;
 };
 

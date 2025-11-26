@@ -50,7 +50,7 @@ rr_forwarder::~rr_forwarder()
         aux::edr edr
         {
             .arrival_time_ms = pr.second.arrival_time_ms,
-            .tcp_resp_dur_ms = aux::edr::TIMEOUT,
+            .tcp_resp_dur_us = TIMESTAMP_TIMEOUT,
             .client_addr = pr.second.client_addr,
             .server_addr = pr.second.server_addr,
             .client_port = pr.second.client_port,
@@ -126,8 +126,8 @@ void rr_forwarder::forward_requests()
             } while (m_pending_reqs.contains(rid));
 
             using namespace chrono;
-            uint64_t current_time_ms =
-                duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+            uint64_t current_time_us =
+                duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
             pending_request pr
             {
                 .request_id = rid,
@@ -137,7 +137,7 @@ void rr_forwarder::forward_requests()
                 .client_addr = req.client_addr,
                 .server_addr = it->get()->get_address(),
                 .arrival_time_ms = req.arr_timestamp_ms,
-                .fwd_time_ms = current_time_ms
+                .fwd_time_us = current_time_us
             };
             m_pending_reqs.emplace(rid, pr);
         }
@@ -167,10 +167,14 @@ void rr_forwarder::send_responses()
             m_pending_reqs.erase(it);
         }
 
+        auto response_time_us =
+            (resp.resp_timestamp_us == TIMESTAMP_TIMEOUT) ?
+            TIMESTAMP_TIMEOUT : (resp.resp_timestamp_us - pr.fwd_time_us);
+
         aux::edr edr
         {
             .arrival_time_ms = pr.arrival_time_ms,
-            .tcp_resp_dur_ms = resp.resp_timestamp_ms - pr.fwd_time_ms,
+            .tcp_resp_dur_us = response_time_us,
             .client_addr = pr.client_addr,
             .server_addr = pr.server_addr,
             .client_port = pr.client_port,

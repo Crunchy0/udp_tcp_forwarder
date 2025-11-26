@@ -1,6 +1,7 @@
 #pragma once
 
 #include <concepts>
+#include <cstdint>
 #include <iostream>
 
 namespace utf
@@ -17,4 +18,6 @@ namespace utf
     {
         std::declval<std::ostream>() << pr;
     };
+
+    constexpr uint64_t TIMESTAMP_TIMEOUT = ~0ul;
 }

@@ -1,6 +1,8 @@
 #include "edr_logger.h"
+#include "utf_core.h"
 
 #include <exception>
+#include <iomanip>
 
 namespace utf
 {
@@ -28,13 +30,14 @@ void edr_logger::write(const edr& edr_rep)
             edr_rep.client_addr << ":" << edr_rep.client_port << " " <<
             edr_rep.server_addr << ":" << edr_rep.server_port << " ";
         
-    if(edr_rep.tcp_resp_dur_ms == edr::TIMEOUT)
+    if(edr_rep.tcp_resp_dur_us == TIMESTAMP_TIMEOUT)
     {
         m_dest << "timed_out";
     }
     else
     {
-        m_dest << edr_rep.tcp_resp_dur_ms;
+        m_dest << edr_rep.tcp_resp_dur_us / 1000 << "." <<
+            std::setw(3) << std::setfill('0') << edr_rep.tcp_resp_dur_us % 1000 << "_ms";
     }
     m_dest << std::endl;
 }

@@ -56,12 +56,12 @@ void udp_server::recv_token(
     }
 
     using namespace std::chrono;
-    uint64_t curr_time_ms =
-        duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    uint64_t curr_time_us =
+        duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
 
     incoming_req_evt.invoke(
         utf::scheduling::client_request(
-            m_id, curr_time_ms,
+            m_id, curr_time_us,
             m_remote_ep.address().to_v4(), m_remote_ep.port(),
             m_recv_buf.begin(), m_recv_buf.begin() + bytes_count
         )

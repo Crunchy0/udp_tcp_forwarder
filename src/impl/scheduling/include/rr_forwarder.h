@@ -33,7 +33,7 @@ private:
         boost::asio::ip::address_v4 client_addr;
         boost::asio::ip::address_v4 server_addr;
         uint64_t arrival_time_ms;
-        uint64_t fwd_time_ms;
+        uint64_t fwd_time_us;
     };
 
 public:

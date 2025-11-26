@@ -19,15 +19,13 @@ using namespace boost::asio;
 struct edr
 {
     uint64_t arrival_time_ms;
-    uint64_t tcp_resp_dur_ms;
+    uint64_t tcp_resp_dur_us;
 
     ip::address_v4 client_addr;
     ip::address_v4 server_addr;
     
     uint16_t client_port;
     uint16_t server_port;
-
-    static constexpr uint64_t TIMEOUT = ~0ul;
 };
 
 class edr_logger : public utf::aux::formatted_logger<edr>

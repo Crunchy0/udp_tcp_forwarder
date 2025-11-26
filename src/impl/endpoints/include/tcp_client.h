@@ -83,7 +83,7 @@ private:
     uint64_t m_conn_timeo_ms;
     uint64_t m_resp_timeo_ms;
 
-    static constexpr int32_t STATUS_OK = 0xffffffff;
+    static constexpr int32_t STATUS_OK = 0;
     static constexpr int32_t STATUS_TIMEOUT = 1;
 };
 
