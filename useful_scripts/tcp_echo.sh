@@ -1,3 +1,3 @@
 #!/bin/bash
 
-ncat -k -l -e /bin/cat -p $1
+ncat -k -l -e /bin/cat -o /dev/stdout -p $1
