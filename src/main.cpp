@@ -36,6 +36,7 @@ void sig_handler(int sig)
 
 int main(int argc, char** argv)
 {
+    // The only option is path to the config
     po::options_description desc("Allowed options");
     desc.add_options()
         ("config", po::value<std::string>()->default_value("./cfg.json"), "Path to configuration file");
@@ -43,6 +44,7 @@ int main(int argc, char** argv)
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
 
+    // Try parsing and validating config
     auto json_val = utf::aux::parse_json(vm.at("config").as<std::string>());
     if(!json_val)
     {
@@ -61,9 +63,11 @@ int main(int argc, char** argv)
 
     spdlog::set_level(config.logging_lvl);
 
+    // Two io_context's - for TCP and UDP each
     io_context ioc_tcp;
     io_context ioc_udp;
 
+    // Populate TCP clients
     std::vector<std::shared_ptr<tcp_client>> tcp_clients;
     tcp_clients.reserve(config.tcp_clients.size());
     for(const auto& client : config.tcp_clients)
@@ -76,6 +80,7 @@ int main(int argc, char** argv)
         ));
     }
 
+    // Populate UDP servers
     std::vector<std::shared_ptr<udp_server>> udp_servers;
     udp_servers.reserve(config.udp_ports.size());
     for(uint32_t i = 0; i < config.udp_ports.size(); ++i)
@@ -87,6 +92,7 @@ int main(int argc, char** argv)
 
     auto fwdr = std::make_shared<utf::scheduling::rr_forwarder>(std::move(tcp_clients));
 
+    // Setup EDR logger
     std::shared_ptr<utf::aux::edr_logger> edr_logger = nullptr;
     if(!config.log_file_path.empty())
     {
@@ -104,6 +110,7 @@ int main(int argc, char** argv)
         }
     }
     
+    // Sending responses back from TCP servers to UDP clients
     fwdr->send_back_evt.subscribe(
         cb_id::send_back,
         [&udp_servers](uint32_t id, boost::asio::ip::address_v4 addr, uint16_t port, const std::vector<char>& payload)
@@ -112,11 +119,13 @@ int main(int argc, char** argv)
         }
     );
 
+    // Subscrube to receive messages from UDP clients
     for(const auto& server: udp_servers)
     {
         server->incoming_req_evt.subscribe(fwdr, &utf::scheduling::rr_forwarder::schedule);
     }
 
+    // Stop io_context's and destroy forwarder when a signal is caught
     destroyer =
     [&]()
     {
@@ -130,6 +139,8 @@ int main(int argc, char** argv)
     signal(SIGINT, sig_handler);
     signal(SIGTERM, sig_handler);
 
+    // Decide how many threads to use
+    // TODO: Make it configurable
     auto conc = std::thread::hardware_concurrency();
     decltype(conc) num_threads = 1;
     num_threads += conc > 4 ? conc / 4 : 0;

@@ -27,8 +27,10 @@ public:
 
     void invoke(Args... args)
     {
+        // For erasing expired owners (weak pointers)
         std::vector<size_t> junktown;
 
+        // Callbacks with hash
         {
         std::shared_lock l(m_cb_access_mx);
         for(auto& cb : m_cb)
@@ -39,6 +41,7 @@ public:
         }
         }
 
+        // Callbacks without hash
         {
         std::shared_lock l(m_cb_access_mx);
         for(auto& cb : m_hashless_cb)
@@ -47,6 +50,7 @@ public:
         }
         }
 
+        // Dispose of expired owners
         {
         std::shared_lock l(m_cb_access_mx);
         for(const size_t& hash : junktown)
@@ -69,6 +73,7 @@ public:
         auto wrapper =
         [weak, hdlr](std::function<void()> del_req, Args&&... args)
         {
+            // Dispose of this owner if it no longer exists
             auto shared = weak.lock();
             if(!shared)
             {
@@ -76,6 +81,7 @@ public:
                 return;
             }
 
+            // Otherwise, call its member function
             (shared.get()->*hdlr)(args...);
         };
 
@@ -110,6 +116,7 @@ public:
         auto wrapper =
         [optr, hdlr]([[maybe_unused]] std::function<void()> del_req, Args... args)
         {
+            // Do nothing to this object, since we don't own it
             (optr->*hdlr)(args...);
         };
 

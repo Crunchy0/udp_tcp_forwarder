@@ -76,6 +76,7 @@ void tcp_client::conn_timeo_token(const boost::system::error_code& ec)
 
     if(m_timeo.expires_at() > boost::asio::deadline_timer::traits_type::now())
     {
+        // Continue waiting, still have time
         m_timeo.async_wait(boost::bind(&tcp_client::conn_timeo_token, this, _1));
         return;
     }
@@ -84,6 +85,7 @@ void tcp_client::conn_timeo_token(const boost::system::error_code& ec)
         m_targ.address().to_string(), m_targ.port()
     );
 
+    // Try reconnecting
     m_sock.close();
     start_connect();
 }
@@ -119,6 +121,7 @@ void tcp_client::resp_timeo_token(
         return;
     }
 
+    // Timeout has expired, notify listeners
     giveaway_response(STATUS_TIMEOUT, request_id, std::vector<char>());
 
     m_req_mem.erase(it);
@@ -138,6 +141,8 @@ void tcp_client::send_token(
         spdlog::error("({0}:{1}) Send failed",
             m_targ.address().to_string(), m_targ.port()
         );
+
+        // Try reconnecting
         m_is_conn.store(false);
         if(m_sock.is_open())
             m_sock.close();
@@ -163,6 +168,8 @@ void tcp_client::recv_token(
         spdlog::error("({0}:{1}) Receive error: {2}",
             m_targ.address().to_string(), m_targ.port(), ec.message()
         );
+
+        // Try reconnecting
         m_is_conn.store(false);
         if(m_sock.is_open())
             m_sock.close();
@@ -189,6 +196,7 @@ void tcp_client::recv_token(
             m_targ.address().to_string(), m_targ.port(), *req_id
         );
 
+        // Received before timeout expiration, notify listeners
         giveaway_response(STATUS_OK, *req_id, std::vector<char>(payload_begin, payload_end));
 
         std::lock_guard l(m_req_mux);
@@ -211,6 +219,7 @@ void tcp_client::giveaway_response(uint32_t status, req_id_t req_id, std::vector
     const auto* status_bytes = reinterpret_cast<const char*>(&status);
     payload.insert(payload.begin(), status_bytes, status_bytes + sizeof(status));
 
+    // Write timestamp depending on status
     uint64_t curr_time_us;
     switch(status)
     {
@@ -224,6 +233,7 @@ void tcp_client::giveaway_response(uint32_t status, req_id_t req_id, std::vector
             break;
     }
 
+    // Notify all response listeners
     resp_giveaway_evt.invoke(
         scheduling::server_response(
             req_id,

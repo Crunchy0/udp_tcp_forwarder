@@ -73,6 +73,7 @@ config read_config(const boost::json::value& json_cfg)
     auto cnn_t = json_obj.find("connection_timeout_ms");
     auto log_l = json_obj.find("logging_level");
 
+    // Read ports as numbers
     if(udp_p != json_obj.end() && udp_p->value().is_array())
     {
         for(const auto& elem : udp_p->value().as_array())
@@ -84,6 +85,7 @@ config read_config(const boost::json::value& json_cfg)
         }
     }
 
+    // Read clients as <ipv4, port> pairs (<string, number>)
     if(tcp_c != json_obj.end() && tcp_c->value().is_array())
     {
         for(const auto& elem : tcp_c->value().as_array())
@@ -114,6 +116,7 @@ config read_config(const boost::json::value& json_cfg)
         }
     }
 
+    // Read EDR log path as string
     if(log_p != json_obj.end() && log_p->value().is_string())
     {
         const auto& log_p_str = log_p->value().as_string();
@@ -123,6 +126,7 @@ config read_config(const boost::json::value& json_cfg)
     using rsp_t_lim = std::numeric_limits<decltype(cfg.response_timeout_ms)>;
     using cnn_t_lim = std::numeric_limits<decltype(cfg.connection_timeout_ms)>;
 
+    // Read response timeout as number, clamp
     if(rsp_t != json_obj.end() && rsp_t->value().is_int64())
     {
         const auto& rsp_t_val = rsp_t->value().as_int64();
@@ -130,6 +134,7 @@ config read_config(const boost::json::value& json_cfg)
             cfg.response_timeout_ms = rsp_t_val > rsp_t_lim::max() ? rsp_t_lim::max() : rsp_t_val;
     }
 
+    // Read connection timeout as number, clamp
     if(cnn_t != json_obj.end() && cnn_t->value().is_int64())
     {
         const auto& cnn_t_val = cnn_t->value().as_int64();
@@ -137,6 +142,7 @@ config read_config(const boost::json::value& json_cfg)
             cfg.connection_timeout_ms = cnn_t_val > cnn_t_lim::max() ? cnn_t_lim::max() : cnn_t_val;
     }
 
+    // Read logging level as number, map to spdlog::level::level_enum
     if(log_l != json_obj.end() && log_l->value().is_int64())
     {
         const auto& log_l_val = log_l->value().as_int64();

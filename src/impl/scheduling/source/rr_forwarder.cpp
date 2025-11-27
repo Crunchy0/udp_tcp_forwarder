@@ -26,6 +26,7 @@ rr_forwarder::rr_forwarder(std::vector<std::shared_ptr<utf::endpoints::tcp_clien
     if(m_clients.empty())
         throw std::runtime_error("rr_forwarder: Empty clients list");
     
+    // Subscribe our acceptor to every client's giveaway event
     for(const auto& cl : m_clients)
     {
         cl->resp_giveaway_evt.subscribe(this, &rr_forwarder::accept_response);
@@ -42,10 +43,12 @@ rr_forwarder::~rr_forwarder()
     m_is_stopped.store(true);
     m_stop_sync.wait();
 
+    // Wait until all the operations are
     {
         std::scoped_lock l(m_pend_mx, m_req_mx, m_resp_mx);
     }
 
+    // Write reports for remaining requests (with timeout message)
     for(const auto& pr : m_pending_reqs)
     {
         aux::edr edr
@@ -85,6 +88,7 @@ decltype(rr_forwarder::m_clients)::iterator rr_forwarder::get_next_client()
     if(m_curr_client == m_clients.end())
         m_curr_client = m_clients.begin();
 
+    // Start search from next
     auto it = m_curr_client + 1;
     for(;it != m_curr_client;)
     {
@@ -94,6 +98,7 @@ decltype(rr_forwarder::m_clients)::iterator rr_forwarder::get_next_client()
             continue;
         }
 
+        // Skip inactive servers
         if(!it->get()->is_connected())
         {
             ++it;
@@ -124,12 +129,14 @@ void rr_forwarder::forward_requests()
         
         uint64_t rid;
         {
+            // Generate random request id
             std::lock_guard l2(m_pend_mx);
             do
             {
                 rid = id_distr(rand_eng);
             } while (m_pending_reqs.contains(rid));
 
+            // Get timestamp and fill pending request info, then store the latter
             using namespace chrono;
             uint64_t current_time_us =
                 duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
@@ -145,6 +152,7 @@ void rr_forwarder::forward_requests()
                 .fwd_time_us = current_time_us
             };
             m_pending_reqs.emplace(rid, pr);
+
 
             spdlog::trace("Scheduled request #{0:x}: {1}:{2} -> {3}:{4}",
                 rid,
@@ -165,6 +173,7 @@ void rr_forwarder::send_responses()
     {
         const auto& resp = m_responses.front();
 
+        // Find the associated entry and remove it if it exists
         pending_request pr;
         {
             std::lock_guard l(m_pend_mx);
@@ -185,6 +194,7 @@ void rr_forwarder::send_responses()
             (resp.resp_timestamp_us == TIMESTAMP_TIMEOUT) ?
             TIMESTAMP_TIMEOUT : (resp.resp_timestamp_us - pr.fwd_time_us);
 
+        // Build EDR report and notify listeners
         aux::edr edr
         {
             .arrival_time_ms = pr.arrival_time_ms,

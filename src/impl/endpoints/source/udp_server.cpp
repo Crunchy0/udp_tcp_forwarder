@@ -76,6 +76,7 @@ void udp_server::recv_token(
     uint64_t curr_time_us =
         duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
 
+    // Notify everyone who wants to handle requests
     incoming_req_evt.invoke(
         utf::scheduling::client_request(
             m_id, curr_time_us,
