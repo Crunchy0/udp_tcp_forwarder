@@ -140,7 +140,7 @@ config read_config(const boost::json::value& json_cfg)
     if(log_l != json_obj.end() && log_l->value().is_int64())
     {
         const auto& log_l_val = log_l->value().as_int64();
-        if(log_l_val < 0 || log_l_val > spdlog::level::level_enum::n_levels)
+        if(log_l_val < 0 || log_l_val >= spdlog::level::level_enum::n_levels)
             cfg.logging_lvl = spdlog::level::level_enum::off;
         else
             cfg.logging_lvl = static_cast<spdlog::level::level_enum>(log_l_val);
