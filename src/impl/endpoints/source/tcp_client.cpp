@@ -23,15 +23,20 @@ tcp_client::net_endpoint(
     m_conn_timeo_ms(conn_timeo_ms),
     m_resp_timeo_ms(resp_timeo_ms)
 {
-    m_sock.async_connect(m_targ, boost::bind(&tcp_client::conn_token, this, _1));
-
-    m_timeo.expires_from_now(boost::posix_time::milliseconds(m_conn_timeo_ms));
-    m_timeo.async_wait(boost::bind(&tcp_client::conn_timeo_token, this, _1));
+    start_connect();
 }
 
 tcp_client::~net_endpoint()
 {
     stop();
+}
+
+void tcp_client::start_connect()
+{
+    m_sock.async_connect(m_targ, boost::bind(&tcp_client::conn_token, this, _1));
+
+    m_timeo.expires_from_now(boost::posix_time::milliseconds(m_conn_timeo_ms));
+    m_timeo.async_wait(boost::bind(&tcp_client::conn_timeo_token, this, _1));
 }
 
 void tcp_client::conn_token(const boost::system::error_code& ec)
@@ -66,24 +71,21 @@ void tcp_client::conn_token(const boost::system::error_code& ec)
 
 void tcp_client::conn_timeo_token(const boost::system::error_code& ec)
 {
-    if(m_stopped.load())
+    if(ec || m_stopped.load())
         return;
 
-    if(m_timeo.expires_at() <= boost::asio::deadline_timer::traits_type::now())
+    if(m_timeo.expires_at() > boost::asio::deadline_timer::traits_type::now())
     {
-        m_sock.close();
-        m_timeo.expires_from_now(boost::posix_time::seconds(1));
-        m_sock.async_connect(m_targ, boost::bind(&tcp_client::conn_token, this, _1));
-
-        spdlog::warn("({0}:{1}) Connection timed out, reconnecting",
-            m_targ.address().to_string(), m_targ.port()
-        );
-    }
-    else if(ec)
-    {
+        m_timeo.async_wait(boost::bind(&tcp_client::conn_timeo_token, this, _1));
         return;
     }
-    m_timeo.async_wait(boost::bind(&tcp_client::conn_timeo_token, this, _1));
+
+    spdlog::warn("({0}:{1}) Connection timed out, reconnecting",
+        m_targ.address().to_string(), m_targ.port()
+    );
+
+    m_sock.close();
+    start_connect();
 }
 
 void tcp_client::resp_timeo_token(
@@ -136,13 +138,16 @@ void tcp_client::send_token(
         spdlog::error("({0}:{1}) Send failed",
             m_targ.address().to_string(), m_targ.port()
         );
+        m_is_conn.store(false);
+        if(m_sock.is_open())
+            m_sock.close();
+        start_connect();
+        return;
     }
-    else
-    {
-        spdlog::debug("({0}:{1}) Sent {2} bytes",
-            m_targ.address().to_string(), m_targ.port(), bytes_count
-        );
-    }
+
+    spdlog::debug("({0}:{1}) Sent {2} bytes",
+        m_targ.address().to_string(), m_targ.port(), bytes_count
+    );
 }
 
 void tcp_client::recv_token(
@@ -158,8 +163,14 @@ void tcp_client::recv_token(
         spdlog::error("({0}:{1}) Receive error: {2}",
             m_targ.address().to_string(), m_targ.port(), ec.message()
         );
+        m_is_conn.store(false);
+        if(m_sock.is_open())
+            m_sock.close();
+        start_connect();
+        return;
     }
-    else if(bytes_count < sizeof(req_id_t))
+    
+    if(bytes_count < sizeof(req_id_t))
     {
         spdlog::error("({0}:{1}) Received response is shorter than size of request ID ({2})",
             m_targ.address().to_string(), m_targ.port(), sizeof(req_id_t)

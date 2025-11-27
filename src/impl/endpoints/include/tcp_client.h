@@ -49,6 +49,8 @@ public:
     scheduling::event<const scheduling::server_response&> resp_giveaway_evt;
 
 private:
+    void start_connect();
+
     void conn_timeo_token(const boost::system::error_code& ec);
     void resp_timeo_token(
         const boost::system::error_code& ec,
@@ -110,6 +112,7 @@ int tcp_client::send(uint64_t req_id, const BP begin, const BP end)
     send_buf->reserve(end - begin + sizeof(req_id));
     send_buf->insert(send_buf->end(), req_id_bytes, req_id_bytes + sizeof(req_id));
     send_buf->insert(send_buf->end(), begin, end);
+    send_buf->push_back(0);
     m_sock.async_send(
         boost::asio::buffer(*send_buf, send_buf->size()),
         boost::bind(&tcp_client::send_token, this, _1, _2, send_buf)
